@@ -1,6 +1,6 @@
 {
   "name": "@akp-tools/yt-dlp-mcp",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "MCP server for retrieving video transcripts via yt-dlp",
   "type": "module",
   "bin": {
