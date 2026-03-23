@@ -190,10 +190,18 @@ server.registerTool("get_comments", {
 // Load the video insights workflow resource
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const videoInsightsMd = readFileSync(
-  resolve(__dirname, "resources", "video-insights.md"),
-  "utf-8",
-);
+let videoInsightsMd: string;
+try {
+  videoInsightsMd = readFileSync(
+    resolve(__dirname, "resources", "video-insights.md"),
+    "utf-8",
+  );
+} catch {
+  console.error(
+    "Fatal: could not load resources/video-insights.md. Run 'npm run build' first.",
+  );
+  process.exit(1);
+}
 
 server.registerResource(
   "video-insights",
