@@ -92,7 +92,7 @@ describe("parseVTT", () => {
     expect(parseVTT("WEBVTT\n\n")).toEqual([]);
   });
 
-  it("handles multi-line cues", () => {
+  it("handles multi-line cues as separate entries", () => {
     const vtt = `WEBVTT
 
 00:00:01.000 --> 00:00:03.000
@@ -100,8 +100,35 @@ First line
 Second line
 `;
     const lines = parseVTT(vtt);
-    expect(lines).toHaveLength(1);
-    expect(lines[0].text).toBe("First line Second line");
+    expect(lines).toHaveLength(2);
+    expect(lines[0].text).toBe("First line");
+    expect(lines[1].text).toBe("Second line");
+  });
+
+  it("deduplicates scrolling auto-sub overlap", () => {
+    const vtt = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+I have never been this excited to spend
+
+00:00:02.000 --> 00:00:04.000
+I have never been this excited to spend
+this much money in my life because
+
+00:00:03.000 --> 00:00:05.000
+this much money in my life because
+what's in front of me is Apple's brand
+
+00:00:04.000 --> 00:00:06.000
+what's in front of me is Apple's brand
+new MacBook Pros
+`;
+    const lines = parseVTT(vtt);
+    expect(lines).toHaveLength(4);
+    expect(lines[0].text).toBe("I have never been this excited to spend");
+    expect(lines[1].text).toBe("this much money in my life because");
+    expect(lines[2].text).toBe("what's in front of me is Apple's brand");
+    expect(lines[3].text).toBe("new MacBook Pros");
   });
 });
 

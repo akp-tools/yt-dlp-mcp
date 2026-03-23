@@ -16,6 +16,12 @@ export function parseVTT(content: string): TimestampedLine[] {
     i++;
   }
 
+  // Track seen lines to deduplicate auto-sub scrolling overlap.
+  // Auto-subs use multi-line cues where each cue repeats the previous cue's
+  // last line(s) as its first line(s). We deduplicate at the individual line
+  // level so only genuinely new text gets emitted.
+  const seenLines = new Set<string>();
+
   while (i < lines.length) {
     const line = lines[i];
 
@@ -29,22 +35,17 @@ export function parseVTT(content: string): TimestampedLine[] {
       i++;
 
       // Collect all text lines until blank line or next timestamp
-      const textParts: string[] = [];
       while (
         i < lines.length &&
         lines[i].trim() !== "" &&
         !lines[i].includes("-->")
       ) {
-        textParts.push(lines[i]);
-        i++;
-      }
-
-      const text = stripTags(textParts.join(" ")).trim();
-      if (text) {
-        // Deduplicate: skip if identical to previous line
-        if (result.length === 0 || result[result.length - 1].text !== text) {
+        const text = stripTags(lines[i]).trim();
+        if (text && !seenLines.has(text)) {
+          seenLines.add(text);
           result.push({ timestamp, text });
         }
+        i++;
       }
     } else {
       i++;
