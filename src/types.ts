@@ -5,6 +5,37 @@ export interface SubtitleTrack {
   formats: string[];
 }
 
+export interface VideoMetadata {
+  title: string;
+  description: string;
+  channel: string;
+  channelUrl: string;
+  uploadDate: string;
+  duration: number;
+  durationString: string;
+  viewCount: number | null;
+  likeCount: number | null;
+  commentCount: number | null;
+  categories: string[];
+  tags: string[];
+  thumbnail: string;
+  url: string;
+}
+
+export interface VideoComment {
+  id: string;
+  author: string;
+  authorUrl: string;
+  authorIsUploader: boolean;
+  text: string;
+  likeCount: number;
+  isPinned: boolean;
+  isFavorited: boolean;
+  timestamp: number | null;
+  timeText: string;
+  parentId: string;
+}
+
 export interface TimestampedLine {
   timestamp: string;
   text: string;

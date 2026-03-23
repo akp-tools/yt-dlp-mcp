@@ -3,7 +3,7 @@ import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import type { SubtitleTrack } from "./types.js";
+import type { SubtitleTrack, VideoComment, VideoMetadata } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 const TIMEOUT_MS = 30_000;
@@ -22,10 +22,9 @@ export async function checkYtdlp(): Promise<void> {
 }
 
 /**
- * List available subtitle tracks for a video URL.
- * Uses --dump-json to get structured metadata including subtitle info.
+ * Fetch video JSON metadata via --dump-json.
  */
-export async function listSubtitles(url: string): Promise<SubtitleTrack[]> {
+async function fetchVideoJson(url: string): Promise<any> {
   await checkYtdlp();
 
   const { stdout } = await execFileAsync(
@@ -34,10 +33,37 @@ export async function listSubtitles(url: string): Promise<SubtitleTrack[]> {
     { timeout: TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 }
   );
 
-  const info = JSON.parse(stdout);
+  return JSON.parse(stdout);
+}
+
+/**
+ * Extract VideoMetadata from yt-dlp JSON output.
+ */
+function extractMetadata(info: any): VideoMetadata {
+  return {
+    title: info.title ?? "",
+    description: info.description ?? "",
+    channel: info.channel ?? info.uploader ?? "",
+    channelUrl: info.channel_url ?? "",
+    uploadDate: info.upload_date ?? "",
+    duration: info.duration ?? 0,
+    durationString: info.duration_string ?? "",
+    viewCount: info.view_count ?? null,
+    likeCount: info.like_count ?? null,
+    commentCount: info.comment_count ?? null,
+    categories: info.categories ?? [],
+    tags: info.tags ?? [],
+    thumbnail: info.thumbnail ?? "",
+    url: info.webpage_url ?? "",
+  };
+}
+
+/**
+ * Extract subtitle tracks from yt-dlp JSON output.
+ */
+function extractSubtitleTracks(info: any): SubtitleTrack[] {
   const tracks: SubtitleTrack[] = [];
 
-  // Manual subtitles
   if (info.subtitles) {
     for (const [lang, entries] of Object.entries<any[]>(info.subtitles)) {
       if (!entries?.length) continue;
@@ -50,7 +76,6 @@ export async function listSubtitles(url: string): Promise<SubtitleTrack[]> {
     }
   }
 
-  // Auto-generated subtitles
   if (info.automatic_captions) {
     for (const [lang, entries] of Object.entries<any[]>(
       info.automatic_captions
@@ -69,12 +94,50 @@ export async function listSubtitles(url: string): Promise<SubtitleTrack[]> {
 }
 
 /**
- * Download a subtitle track and return its VTT content.
+ * Get video metadata.
+ */
+export async function getVideoMetadata(url: string): Promise<VideoMetadata> {
+  const info = await fetchVideoJson(url);
+  return extractMetadata(info);
+}
+
+/**
+ * List available subtitle tracks for a video URL.
+ * Also returns video metadata since we fetch it in the same call.
+ */
+export async function listSubtitles(
+  url: string
+): Promise<{ metadata: VideoMetadata; tracks: SubtitleTrack[] }> {
+  const info = await fetchVideoJson(url);
+  return {
+    metadata: extractMetadata(info),
+    tracks: extractSubtitleTracks(info),
+  };
+}
+
+/**
+ * Download a subtitle track and return its VTT content,
+ * along with video metadata.
  *
  * If no language is specified, prefers manual English subs,
  * falls back to auto-generated English, then any available track.
  */
 export async function downloadSubtitle(
+  url: string,
+  language?: string
+): Promise<{ metadata: VideoMetadata; vtt: string }> {
+  const [info, vtt] = await Promise.all([
+    fetchVideoJson(url),
+    downloadVtt(url, language),
+  ]);
+
+  return { metadata: extractMetadata(info), vtt };
+}
+
+/**
+ * Download a subtitle track and return raw VTT content.
+ */
+async function downloadVtt(
   url: string,
   language?: string
 ): Promise<string> {
