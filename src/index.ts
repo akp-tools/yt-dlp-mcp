@@ -10,9 +10,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const pkg = JSON.parse(readFileSync(resolve(__dirname, "..", "package.json"), "utf-8"));
+
 const server = new McpServer({
   name: "yt-dlp-mcp",
-  version: "0.2.0",
+  version: pkg.version,
 });
 
 function formatMetadataHeader(meta: VideoMetadata): string {
@@ -205,8 +210,6 @@ server.registerTool("get_comments", {
 });
 
 // Load the video insights workflow resource
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 let videoInsightsMd: string;
 try {
   videoInsightsMd = readFileSync(
