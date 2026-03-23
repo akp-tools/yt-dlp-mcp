@@ -38,7 +38,7 @@ Add to your MCP server configuration:
   "mcpServers": {
     "yt-dlp": {
       "command": "npx",
-      "args": ["-y", "yt-dlp-mcp"]
+      "args": ["-y", "@akp-tools/yt-dlp-mcp"]
     }
   }
 }
@@ -47,7 +47,7 @@ Add to your MCP server configuration:
 ### Global install
 
 ```bash
-npm install -g yt-dlp-mcp
+npm install -g @akp-tools/yt-dlp-mcp
 ```
 
 Then run directly:
