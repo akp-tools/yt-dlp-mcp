@@ -220,6 +220,51 @@ try {
   process.exit(1);
 }
 
+// Resource registry for the get_resource tool (fallback for clients that can't fetch MCP resources)
+const resourceRegistry: Record<string, { description: string; content: string }> = {
+  "video-insights": {
+    description:
+      "Step-by-step workflow for extracting key insights with timestamps from a video using the get_transcript and get_comments tools.",
+    content: videoInsightsMd,
+  },
+};
+
+server.registerTool("get_resource", {
+  description:
+    "Get a resource by name, or list all available resources if no name is given. Use this to access workflow guides and reference documents provided by this server.",
+  inputSchema: {
+    resource: z
+      .string()
+      .optional()
+      .describe("Resource name to retrieve (e.g. 'video-insights'). Omit to list all available resources."),
+  },
+}, async ({ resource }) => {
+  if (!resource) {
+    const listing = Object.entries(resourceRegistry)
+      .map(([name, { description }]) => `- **${name}**: ${description}`)
+      .join("\n");
+    return {
+      content: [{
+        type: "text" as const,
+        text: `Available resources:\n\n${listing}\n\nPass a resource name to retrieve its full content.`,
+      }],
+    };
+  }
+
+  const entry = resourceRegistry[resource];
+  if (!entry) {
+    const valid = Object.keys(resourceRegistry).join(", ");
+    return {
+      content: [{ type: "text" as const, text: `Unknown resource: "${resource}". Available resources: ${valid}` }],
+      isError: true,
+    };
+  }
+
+  return {
+    content: [{ type: "text" as const, text: entry.content }],
+  };
+});
+
 server.registerResource(
   "video-insights",
   "yt-dlp://instructions/video-insights",
