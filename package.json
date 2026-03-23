@@ -11,6 +11,10 @@
     "dev": "tsc --watch",
     "test": "vitest run"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akp-tools/yt-dlp-mcp"
+  },
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
