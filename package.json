@@ -7,7 +7,7 @@
     "yt-dlp-mcp": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && rm -rf dist/resources && cp -r src/resources dist/resources",
     "dev": "tsc --watch",
     "test": "vitest run"
   },
