@@ -3,11 +3,11 @@ import { checkYtdlp, listSubtitles, downloadSubtitle } from "../src/ytdlp.js";
 
 // These tests require yt-dlp to be installed and network access.
 // They use a known CC-licensed video with subtitles.
-// Skip with: npx vitest run --testPathIgnorePatterns ytdlp
+// Skipped in CI via the CI environment variable.
 
 const TEST_URL = "https://www.youtube.com/watch?v=jNQXAC9IVRw"; // "Me at the zoo" - first YouTube video
 
-describe("yt-dlp wrapper", () => {
+describe.skipIf(!!process.env.CI)("yt-dlp wrapper", () => {
   it("checkYtdlp succeeds when yt-dlp is installed", async () => {
     await expect(checkYtdlp()).resolves.toBeUndefined();
   }, 10_000);
