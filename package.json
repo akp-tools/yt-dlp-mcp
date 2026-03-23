@@ -4,7 +4,7 @@
   "description": "MCP server for retrieving video transcripts via yt-dlp",
   "type": "module",
   "bin": {
-    "yt-dlp-mcp": "./dist/index.js"
+    "yt-dlp-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc && rimraf dist/resources && copyfiles -u 1 \"src/resources/**/*\" dist",
