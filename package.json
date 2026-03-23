@@ -7,7 +7,7 @@
     "yt-dlp-mcp": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc && rm -rf dist/resources && cp -r src/resources dist/resources",
+    "build": "tsc && rimraf dist/resources && copyfiles -u 1 \"src/resources/**/*\" dist",
     "dev": "tsc --watch",
     "test": "vitest run"
   },
@@ -17,6 +17,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "copyfiles": "^2.4.1",
+    "rimraf": "^6.1.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }
