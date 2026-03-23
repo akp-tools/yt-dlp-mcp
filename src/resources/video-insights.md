@@ -10,6 +10,8 @@ Call `get_transcript` with:
 
 This returns the full transcript with timestamps like `[00:01:23] text`. You will use these timestamps to anchor your insights.
 
+**For long videos (over 30 minutes):** Use `start_time` and `end_time` to fetch the transcript in chunks instead of all at once. For example, fetch `00:00:00` to `00:30:00`, then `00:30:00` to `01:00:00`, and so on. This keeps each response a manageable size. Both parameters accept `HH:MM:SS` or `MM:SS` format and the range is inclusive on both ends.
+
 ## Step 2: Get the Comments
 
 Call `get_comments` with:

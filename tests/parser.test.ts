@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseVTT, formatTranscript } from "../src/parser.js";
+import { parseVTT, formatTranscript, timestampToSeconds, filterByTimeRange } from "../src/parser.js";
 
 const SAMPLE_VTT = `WEBVTT
 Kind: captions
@@ -146,5 +146,59 @@ describe("formatTranscript", () => {
   it("formats with timestamps", () => {
     const result = formatTranscript(lines, true);
     expect(result).toBe("[00:00:01] Hello world\n[00:00:04] Second line");
+  });
+});
+
+describe("timestampToSeconds", () => {
+  it("converts HH:MM:SS", () => {
+    expect(timestampToSeconds("00:00:00")).toBe(0);
+    expect(timestampToSeconds("00:01:30")).toBe(90);
+    expect(timestampToSeconds("01:00:00")).toBe(3600);
+    expect(timestampToSeconds("02:11:40")).toBe(7900);
+  });
+
+  it("converts MM:SS", () => {
+    expect(timestampToSeconds("30:00")).toBe(1800);
+    expect(timestampToSeconds("01:05")).toBe(65);
+  });
+});
+
+describe("filterByTimeRange", () => {
+  const lines = [
+    { timestamp: "00:00:10", text: "A" },
+    { timestamp: "00:05:00", text: "B" },
+    { timestamp: "00:30:00", text: "C" },
+    { timestamp: "01:00:00", text: "D" },
+    { timestamp: "01:30:00", text: "E" },
+  ];
+
+  it("returns all lines when no range specified", () => {
+    expect(filterByTimeRange(lines)).toEqual(lines);
+    expect(filterByTimeRange(lines, undefined, undefined)).toEqual(lines);
+  });
+
+  it("filters with start_time only", () => {
+    const result = filterByTimeRange(lines, "00:30:00");
+    expect(result.map((l) => l.text)).toEqual(["C", "D", "E"]);
+  });
+
+  it("filters with end_time only", () => {
+    const result = filterByTimeRange(lines, undefined, "00:30:00");
+    expect(result.map((l) => l.text)).toEqual(["A", "B", "C"]);
+  });
+
+  it("filters with both start and end (inclusive)", () => {
+    const result = filterByTimeRange(lines, "00:05:00", "01:00:00");
+    expect(result.map((l) => l.text)).toEqual(["B", "C", "D"]);
+  });
+
+  it("accepts MM:SS shorthand", () => {
+    const result = filterByTimeRange(lines, "30:00", "60:00");
+    expect(result.map((l) => l.text)).toEqual(["C", "D"]);
+  });
+
+  it("returns empty array when range matches nothing", () => {
+    const result = filterByTimeRange(lines, "02:00:00", "03:00:00");
+    expect(result).toEqual([]);
   });
 });

@@ -56,6 +56,36 @@ export function parseVTT(content: string): TimestampedLine[] {
 }
 
 /**
+ * Convert an HH:MM:SS timestamp string to total seconds.
+ */
+export function timestampToSeconds(ts: string): number {
+  const parts = ts.split(":").map(Number);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return parts[0];
+}
+
+/**
+ * Filter transcript lines to a specific time range.
+ * Both start and end are inclusive. Accepts HH:MM:SS or MM:SS format.
+ */
+export function filterByTimeRange(
+  lines: TimestampedLine[],
+  startTime?: string,
+  endTime?: string
+): TimestampedLine[] {
+  if (!startTime && !endTime) return lines;
+
+  const startSec = startTime ? timestampToSeconds(startTime) : 0;
+  const endSec = endTime ? timestampToSeconds(endTime) : Infinity;
+
+  return lines.filter((l) => {
+    const sec = timestampToSeconds(l.timestamp);
+    return sec >= startSec && sec <= endSec;
+  });
+}
+
+/**
  * Format parsed lines into a transcript string.
  */
 export function formatTranscript(

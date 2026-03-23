@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { listSubtitles, downloadSubtitle, getComments } from "./ytdlp.js";
-import { parseVTT, formatTranscript } from "./parser.js";
+import { parseVTT, formatTranscript, filterByTimeRange } from "./parser.js";
 import type { VideoMetadata } from "./types.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -73,7 +73,7 @@ server.registerTool("list_subtitles", {
 
 server.registerTool("get_transcript", {
   description:
-    "Get the transcript of a video. Works with any site supported by yt-dlp. If no language is specified, defaults to English (preferring manual subs over auto-generated). Returns video metadata followed by the transcript.",
+    "Get the transcript of a video. Works with any site supported by yt-dlp. If no language is specified, defaults to English (preferring manual subs over auto-generated). Returns video metadata followed by the transcript. For long videos, use start_time and end_time to fetch specific time ranges instead of the full transcript.",
   inputSchema: {
     url: z.string().describe("Video URL"),
     language: z
@@ -88,13 +88,21 @@ server.registerTool("get_transcript", {
       .enum(["text", "json"])
       .optional()
       .describe("Output format. 'text' (default) returns plain transcript. 'json' returns a JSON array of {timestamp, text} objects, useful for searching/filtering."),
+    start_time: z
+      .string()
+      .optional()
+      .describe("Start of time range to return, in HH:MM:SS or MM:SS format (e.g. '00:30:00' for 30 minutes in). Inclusive. Useful for chunking long transcripts."),
+    end_time: z
+      .string()
+      .optional()
+      .describe("End of time range to return, in HH:MM:SS or MM:SS format (e.g. '01:00:00' for the 1-hour mark). Inclusive. Useful for chunking long transcripts."),
   },
-}, async ({ url, language, include_timestamps, output_format }) => {
+}, async ({ url, language, include_timestamps, output_format, start_time, end_time }) => {
   try {
     const { metadata, vtt } = await downloadSubtitle(url, language);
-    const lines = parseVTT(vtt);
+    const allLines = parseVTT(vtt);
 
-    if (lines.length === 0) {
+    if (allLines.length === 0) {
       return {
         content: [
           {
@@ -106,11 +114,20 @@ server.registerTool("get_transcript", {
       };
     }
 
+    const lines = filterByTimeRange(allLines, start_time, end_time);
+    const totalLines = allLines.length;
     const header = formatMetadataHeader(metadata);
+
+    // Include range info when filtering so the caller knows what they got
+    const rangeNote = (start_time || end_time)
+      ? `\nShowing ${lines.length} of ${totalLines} transcript lines (${start_time ?? "start"} to ${end_time ?? "end"}).`
+      : "";
 
     if (output_format === "json") {
       const result = {
         metadata,
+        totalLines,
+        ...(start_time || end_time ? { filteredLines: lines.length, start_time: start_time ?? null, end_time: end_time ?? null } : {}),
         transcript: lines,
       };
       return {
@@ -121,7 +138,7 @@ server.registerTool("get_transcript", {
     const transcript = formatTranscript(lines, include_timestamps ?? false);
 
     return {
-      content: [{ type: "text" as const, text: `${header}\n\n---\nTranscript:\n${transcript}` }],
+      content: [{ type: "text" as const, text: `${header}${rangeNote}\n\n---\nTranscript:\n${transcript}` }],
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
