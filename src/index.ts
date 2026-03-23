@@ -6,6 +6,9 @@ import { z } from "zod";
 import { listSubtitles, downloadSubtitle, getComments } from "./ytdlp.js";
 import { parseVTT, formatTranscript } from "./parser.js";
 import type { VideoMetadata } from "./types.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 
 const server = new McpServer({
   name: "yt-dlp-mcp",
@@ -183,6 +186,33 @@ server.registerTool("get_comments", {
     };
   }
 });
+
+// Load the video insights workflow resource
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const videoInsightsMd = readFileSync(
+  resolve(__dirname, "resources", "video-insights.md"),
+  "utf-8",
+);
+
+server.registerResource(
+  "video-insights",
+  "yt-dlp://instructions/video-insights",
+  {
+    description:
+      "Step-by-step workflow for extracting key insights with timestamps from a video using the get_transcript and get_comments tools.",
+    mimeType: "text/markdown",
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "text/markdown",
+        text: videoInsightsMd,
+      },
+    ],
+  }),
+);
 
 async function main() {
   const transport = new StdioServerTransport();
