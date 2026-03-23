@@ -129,6 +129,51 @@ server.registerTool("get_transcript", {
   }
 });
 
+server.registerTool("get_comments", {
+  description:
+    "Get comments for a video. Works with any site supported by yt-dlp. Comments are sorted by popularity (top). Can be slow on videos with many comments.",
+  inputSchema: {
+    url: z.string().describe("Video URL"),
+    max_comments: z
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .optional()
+      .describe("Maximum number of top-level comments to fetch (default: 20, max: 500). Higher values take longer."),
+  },
+}, async ({ url, max_comments }) => {
+  try {
+    const { metadata, comments } = await getComments(url, max_comments ?? 20);
+    const header = formatMetadataHeader(metadata);
+
+    if (comments.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `${header}\n\n---\nNo comments found for this video.`,
+          },
+        ],
+      };
+    }
+
+    const formatted = comments.map((c) => {
+      const parts = [
+        `${c.author}${c.isPinned ? " [PINNED]" : ""}${c.authorIsUploader ? " [CREATOR]" : ""} (${c.timeText}, ${c.likeCount.toLocaleString()} likes)`,
+        c.text,
+      ];
+      if (c.parentId) parts[0] = `  ↳ ${parts[0]}`;
+      return parts.join("\n");
+    }).join("\n\n");
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `${header}\n\n---\nComments (${comments.length}):\n\n${formatted}`,
+        },
+      ],
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

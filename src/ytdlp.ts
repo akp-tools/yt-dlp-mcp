@@ -146,12 +146,17 @@ async function downloadVtt(
   const tmp = await mkdtemp(join(tmpdir(), "yt-dlp-mcp-"));
 
   try {
-    const args = ["--skip-download", "--sub-format", "vtt", "-o", join(tmp, "sub")];
+    const args = [
+      "--skip-download",
+      "--sub-format",
+      "vtt",
+      "-o",
+      join(tmp, "sub"),
+    ];
 
     if (language) {
       args.push("--write-subs", "--sub-lang", language);
     } else {
-      // Write both manual and auto subs; yt-dlp prefers manual when both exist
       args.push("--write-subs", "--write-auto-subs", "--sub-lang", "en");
     }
 
@@ -159,7 +164,6 @@ async function downloadVtt(
 
     await execFileAsync("yt-dlp", args, { timeout: TIMEOUT_MS });
 
-    // Find the downloaded .vtt file
     const files = await readdir(tmp);
     const vttFile = files.find((f) => f.endsWith(".vtt"));
 
@@ -174,4 +178,58 @@ async function downloadVtt(
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }
+}
+
+/**
+ * Extract comments from yt-dlp JSON output.
+ */
+function extractComments(info: any): VideoComment[] {
+  if (!info.comments || !Array.isArray(info.comments)) return [];
+
+  return info.comments.map((c: any) => ({
+    id: c.id ?? "",
+    author: c.author ?? "",
+    authorUrl: c.author_url ?? "",
+    authorIsUploader: c.author_is_uploader ?? false,
+    text: c.text ?? "",
+    likeCount: c.like_count ?? 0,
+    isPinned: c.is_pinned ?? false,
+    isFavorited: c.is_favorited ?? false,
+    timestamp: c.timestamp ?? null,
+    timeText: c._time_text ?? "",
+    parentId: c.parent === "root" ? "" : (c.parent ?? ""),
+  }));
+}
+
+/**
+ * Fetch comments for a video URL.
+ * Uses --write-comments with extractor-args to limit the number of comments.
+ * Comments can be slow to fetch on popular videos.
+ */
+export async function getComments(
+  url: string,
+  maxComments: number = 20
+): Promise<{ metadata: VideoMetadata; comments: VideoComment[] }> {
+  await checkYtdlp();
+
+  // max_comments format: max-comments,max-parents,max-replies,max-replies-per-thread
+  // We set max-parents = maxComments, no replies, to get top-level comments only by default
+  const { stdout } = await execFileAsync(
+    "yt-dlp",
+    [
+      "--write-comments",
+      "--dump-json",
+      "--skip-download",
+      "--extractor-args",
+      `youtube:max_comments=${maxComments},${maxComments},0,0;comment_sort=top`,
+      url,
+    ],
+    { timeout: 120_000, maxBuffer: 50 * 1024 * 1024 }
+  );
+
+  const info = JSON.parse(stdout);
+  return {
+    metadata: extractMetadata(info),
+    comments: extractComments(info),
+  };
 }
